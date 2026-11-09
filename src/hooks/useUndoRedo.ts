@@ -35,7 +35,6 @@ export function useUndoRedo({
 
     const lastActionRef = useRef(0);
     const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
-    const actionCandidateRef = useRef<{ action: string | null; enteredAt: number | null }>({ action: null, enteredAt: null });
     const quickMenuTimerRef = useRef<number | null>(null);
     const toastTimerRef = useRef<number | null>(null);
 
@@ -56,6 +55,9 @@ export function useUndoRedo({
         showToast(command.label);
     }, [showToast]);
 
+    const triggerUndo = useCallback(() => runCommand({ id: 'undo', label: '↩ Deshecho', execute: undo }), [runCommand, undo]);
+    const triggerRedo = useCallback(() => runCommand({ id: 'redo', label: '↪ Rehecho', execute: redo }), [runCommand, redo]);
+
     useEffect(() => {
         if (isPaused) {
             setTimelineVisible(true);
@@ -68,39 +70,8 @@ export function useUndoRedo({
     useEffect(() => {
         if (!hands.length) {
             swipeStartRef.current = null;
-            return;
         }
-
-        const hand = hands.find((entry) => entry.handedness === 'right') ?? hands[0];
-        const indexTip = hand.landmarks[8];
-
-        if (!indexTip) return;
-
-        const indexX = indexTip.x;
-
-        // Region-based quick commands for undo/redo (holding hand near side edges)
-        const HOLD_MS = 600;
-        let desiredAction: string | null = null;
-        if (indexX < 0.08) desiredAction = 'undo';
-        else if (indexX > 0.92) desiredAction = 'redo';
-
-        const now = Date.now();
-        if (desiredAction) {
-            const candidate = actionCandidateRef.current;
-            if (candidate.action === desiredAction && candidate.enteredAt && now - candidate.enteredAt > HOLD_MS) {
-                if (desiredAction === 'undo') void runCommand({ id: 'undo', label: 'Deshecho', execute: undo });
-                else if (desiredAction === 'redo') void runCommand({ id: 'redo', label: 'Rehecho', execute: redo });
-                actionCandidateRef.current = { action: null, enteredAt: null };
-                return;
-            }
-            if (actionCandidateRef.current.action !== desiredAction) {
-                actionCandidateRef.current = { action: desiredAction, enteredAt: now };
-            }
-            return;
-        } else {
-            actionCandidateRef.current = { action: null, enteredAt: null };
-        }
-    }, [hands, redo, runCommand, undo]);
+    }, [hands]);
 
     useEffect(() => {
         if (!timelineVisible || !historyEntries.length) return;
@@ -148,6 +119,8 @@ export function useUndoRedo({
         timelineIndex,
         timelineEntries: historyEntries,
         quickActions,
+        triggerUndo,
+        triggerRedo,
     };
 }
 

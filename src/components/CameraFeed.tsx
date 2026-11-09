@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { useHandTracking } from '../hooks/useHandTracking';
+import { HandLandmarks } from '../types/hand';
 
 interface CameraFeedProps {
-    onHandsDetected?: (hands: any[]) => void;
+    onHandsDetected?: (hands: HandLandmarks[]) => void;
     className?: string;
     showPreview?: boolean;
 }

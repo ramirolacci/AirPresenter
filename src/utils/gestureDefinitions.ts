@@ -168,23 +168,23 @@ export function recognizeGesture(
     _handedness: 'left' | 'right',
     isCurrentlyPinching: boolean = false
 ): { type: GestureType; confidence: number } {
-    if (detectPinch(landmarks, isCurrentlyPinching)) {
-        return { type: 'PINCH', confidence: 0.95 };
-    }
     if (detectOpenPalm(landmarks)) {
-        return { type: 'OPEN_PALM', confidence: 0.9 };
-    }
-    if (detectPoint(landmarks)) {
-        return { type: 'POINT', confidence: 0.9 };
+        return { type: 'OPEN_PALM', confidence: 0.95 };
     }
     if (detectPeace(landmarks)) {
-        return { type: 'PEACE', confidence: 0.9 };
+        return { type: 'PEACE', confidence: 0.95 };
     }
-    if (detectFist(landmarks)) {
-        return { type: 'FIST', confidence: 0.9 };
+    if (detectPoint(landmarks)) {
+        return { type: 'POINT', confidence: 0.95 };
+    }
+    if (detectPinch(landmarks, isCurrentlyPinching)) {
+        return { type: 'PINCH', confidence: 0.92 };
     }
     if (detectThumbsUp(landmarks)) {
         return { type: 'THUMBS_UP', confidence: 0.9 };
+    }
+    if (detectFist(landmarks)) {
+        return { type: 'FIST', confidence: 0.9 };
     }
 
     return { type: 'NONE', confidence: 0 };

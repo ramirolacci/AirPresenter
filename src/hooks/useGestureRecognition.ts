@@ -35,7 +35,7 @@ export function useGestureRecognition(options: UseGestureRecognitionOptions) {
             const isCurrentlyPinching = currentConfirmed === 'PINCH';
 
             const rawResult = recognizeGesture(hand.landmarks, hand.handedness, isCurrentlyPinching);
-            let rawType = rawResult.type;
+            const rawType = rawResult.type;
 
             // Historial de estabilidad de frames
             const history = gestureHistoryRef.current[handKey] || { type: 'NONE', count: 0 };

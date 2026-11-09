@@ -41,6 +41,7 @@ export function useHandTracking(options: UseHandTrackingOptions) {
     const handsRef = useRef<Hands | null>(null);
     const cameraRef = useRef<Camera | null>(null);
     const animationFrameRef = useRef<number | null>(null);
+    const isTrackingRef = useRef(false);
 
     // Inicializar MediaPipe Hands
     useEffect(() => {
@@ -147,15 +148,17 @@ export function useHandTracking(options: UseHandTrackingOptions) {
 
                     ctx.restore();
 
-                    // Actualizar estado
-                    setState(prev => ({
-                        ...prev,
-                        hands: detectedHands,
-                        isTracking: true,
-                        isLoading: false,
-                    }));
+                    // Actualizar estado solo cuando cambia el estatus de tracking para evitar re-renders a 60fps
+                    if (!isTrackingRef.current) {
+                        isTrackingRef.current = true;
+                        setState(prev => ({
+                            ...prev,
+                            isTracking: true,
+                            isLoading: false,
+                        }));
+                    }
 
-                    // Callback opcional
+                    // Notificar manos detectadas directamente
                     if (onHandsDetected) {
                         onHandsDetected(detectedHands);
                     }
@@ -257,6 +260,7 @@ export function useHandTracking(options: UseHandTrackingOptions) {
             videoRef.current.srcObject = null;
         }
 
+        isTrackingRef.current = false;
         setState(prev => ({
             ...prev,
             isTracking: false,
@@ -266,10 +270,11 @@ export function useHandTracking(options: UseHandTrackingOptions) {
 
     // Limpiar al desmontar
     useEffect(() => {
+        const animRef = animationFrameRef;
         return () => {
             stopCamera();
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
+            if (animRef.current) {
+                cancelAnimationFrame(animRef.current);
             }
         };
     }, [stopCamera]);

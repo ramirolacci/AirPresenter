@@ -45,6 +45,8 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
         }, 2500);
     }, []);
 
+    const [showToolbar, setShowToolbar] = useState(true);
+
     const {
         currentTool,
         selectTool,
@@ -57,6 +59,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
         redo,
         historyEntries,
         clearCanvas,
+        exportAs,
     } = useCanvasManipulation({
         canvasRef,
         onActionCompleted,
@@ -86,6 +89,18 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
             selectTool(currentAction);
         }
     }, [currentAction, currentTool, selectTool]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.metaKey) {
+                const target = e.target as HTMLElement;
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+                setShowToolbar((prev) => !prev);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const cursorPosition = handCursorPosition ?? pointerPos;
     const showCursor = Boolean(cursorPosition) && !isGesturePaused && (handCursorState?.isVisible ?? true);
@@ -127,9 +142,19 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                         >
                             {handCursorState?.isErasing
                                 ? '🧹 Borrando'
+                                : currentTool === 'SELECT_LASER' && handCursorState?.isDrawing
+                                ? '🔴 Puntero Láser'
+                                : currentTool === 'SELECT_MOVE' && handCursorState?.isMoving
+                                ? '✋ Moviendo objeto'
                                 : handCursorState?.isDrawing
-                                ? '✏️ Dibujando / Agarrando'
-                                : '📍 Puntero'}
+                                ? currentTool === 'DRAW_RECT'
+                                    ? '⬜ Rectángulo'
+                                    : currentTool === 'DRAW_CIRCLE'
+                                    ? '⭕ Círculo'
+                                    : currentTool === 'DRAW_LINE'
+                                    ? '📏 Línea'
+                                    : '✏️ Dibujando'
+                                : '📍 Puntero (Señala para interactuar)'}
                         </div>
                     </div>
                 )}
@@ -169,13 +194,24 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                 </div>
 
                 {/* Main Presenter Toolbar */}
-                <div className="pointer-events-auto absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/20 bg-black/90 px-4 py-2.5 shadow-2xl backdrop-blur">
+                <div
+                    className={`pointer-events-auto absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/20 bg-black/90 px-4 py-2.5 shadow-2xl backdrop-blur transition-all duration-300 ${
+                        showToolbar ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-20 opacity-0'
+                    }`}
+                >
                     <button
                         onClick={() => selectTool('SELECT_BRUSH')}
                         className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${currentTool === 'SELECT_BRUSH' ? 'bg-cyan-500 text-black shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                        title="Pincel Libre (Dibujar)"
+                        title="Pincel Libre (Dibujar con Solo Índice)"
                     >
                         ✏️ Dibujar
+                    </button>
+                    <button
+                        onClick={() => selectTool('SELECT_LASER')}
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${currentTool === 'SELECT_LASER' ? 'bg-rose-500 text-white shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                        title="Puntero Láser (Desvanecimiento automático en 1.8s)"
+                    >
+                        🔴 Láser
                     </button>
                     <button
                         onClick={() => selectTool('SELECT_MOVE')}
@@ -187,7 +223,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                     <button
                         onClick={() => selectTool('SELECT_ERASER')}
                         className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${currentTool === 'SELECT_ERASER' ? 'bg-blue-500 text-white shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                        title="Borrador Vectorial"
+                        title="Borrador Vectorial (Gesto Dos Dedos ✌️)"
                     >
                         🧹 Borrar
                     </button>
@@ -208,6 +244,13 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                         title="Rectángulo"
                     >
                         ⬜
+                    </button>
+                    <button
+                        onClick={() => selectTool('DRAW_LINE')}
+                        className={`rounded-full p-1.5 text-xs transition ${currentTool === 'DRAW_LINE' ? 'bg-cyan-500 text-black font-bold' : 'text-white/80 hover:text-white hover:bg-white/10'}`}
+                        title="Línea / Flecha"
+                    >
+                        📏
                     </button>
 
                     <div className="h-5 w-[1px] bg-white/20 mx-1" />
@@ -254,13 +297,46 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                         ↪
                     </button>
                     <button
+                        onClick={async () => {
+                            try {
+                                await exportAs({ format: 'png', scale: 2 });
+                                showToast('📸 Captura guardada en alta resolución', 'success');
+                            } catch {
+                                showToast('Error al exportar captura', 'warning');
+                            }
+                        }}
+                        className="rounded-full border border-emerald-400/30 bg-emerald-600/80 px-2.5 py-1 text-xs font-semibold text-white shadow hover:bg-emerald-500 transition"
+                        title="Guardar captura PNG para compartir en la videollamada"
+                    >
+                        📸 Captura
+                    </button>
+                    <button
                         onClick={() => void clearCanvas()}
-                        className="rounded-full border border-white/20 bg-rose-600/80 px-2.5 py-1 text-xs font-semibold text-white shadow hover:bg-rose-500"
-                        title="Limpiar lienzo completo"
+                        className="rounded-full border border-white/20 bg-rose-600/80 px-2.5 py-1 text-xs font-semibold text-white shadow hover:bg-rose-500 transition"
+                        title="Limpiar pizarra"
                     >
                         🧽 Limpiar
                     </button>
+                    <button
+                        onClick={() => setShowToolbar(false)}
+                        className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/70 hover:bg-white/20 hover:text-white transition"
+                        title="Ocultar barra para presentación limpia (Tecla H)"
+                    >
+                        👁️ Ocultar
+                    </button>
                 </div>
+
+                {/* Floating pill to restore toolbar when hidden */}
+                {!showToolbar && (
+                    <button
+                        onClick={() => setShowToolbar(true)}
+                        className="pointer-events-auto absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/20 bg-black/80 px-3 py-1.5 text-xs text-white shadow-xl backdrop-blur transition hover:bg-black/95 hover:scale-105"
+                        title="Restaurar barra de herramientas (Tecla H)"
+                    >
+                        <span>👁️</span>
+                        <span className="font-semibold text-white/80">Mostrar Barra (H)</span>
+                    </button>
+                )}
 
                 {quickMenuVisible && <QuickMenu visible={quickMenuVisible} actions={quickActions} />}
 

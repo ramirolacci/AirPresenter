@@ -56,10 +56,17 @@ const pointsToSvgPath = (points: { x: number; y: number }[]): string => {
     if (points.length === 1) {
         return `M ${points[0].x} ${points[0].y} L ${points[0].x + 0.1} ${points[0].y + 0.1}`;
     }
-    let pathStr = `M ${points[0].x} ${points[0].y}`;
-    for (let i = 1; i < points.length; i++) {
-        pathStr += ` L ${points[i].x} ${points[i].y}`;
+    if (points.length === 2) {
+        return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
     }
+    // Suavizado de tinta digital cuadrática por puntos medios (Midpoint Bézier)
+    let pathStr = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length - 1; i++) {
+        const xc = (points[i].x + points[i + 1].x) / 2;
+        const yc = (points[i].y + points[i + 1].y) / 2;
+        pathStr += ` Q ${points[i].x} ${points[i].y}, ${xc} ${yc}`;
+    }
+    pathStr += ` L ${points[points.length - 1].x} ${points[points.length - 1].y}`;
     return pathStr;
 };
 
@@ -641,7 +648,7 @@ export function useCanvasManipulation(options: UseCanvasManipulationOptions) {
                 const tool: EditorAction = currentToolRef.current;
                 const isPinching = isPinchingRef.current;
                 const isErasing = isEraserRef.current || tool === 'SELECT_ERASER';
-                const isPointing = (isPointingRef.current || tool === 'SELECT_BRUSH' || tool === 'SELECT_LASER') && !isPinching && !grabbedObjectRef.current;
+                const isPointing = isPointingRef.current && (tool === 'SELECT_BRUSH' || tool === 'SELECT_LASER') && !isPinching && !grabbedObjectRef.current;
 
                 // 1. ERASER GESTURE (PEACE = Dedo índice + medio)
                 if (isErasing) {
@@ -675,7 +682,7 @@ export function useCanvasManipulation(options: UseCanvasManipulationOptions) {
                     eraserStartTimeRef.current = 0;
                 }
 
-                const isDrawingShapeTool = tool === 'DRAW_RECT' || tool === 'DRAW_CIRCLE';
+                const isDrawingShapeTool = tool === 'DRAW_RECT' || tool === 'DRAW_CIRCLE' || tool === 'DRAW_LINE';
                 const isShapeGestureActive = (isPointingRef.current || isPinching) && isDrawingShapeTool && !grabbedObjectRef.current;
 
                 // 2. DRAWING GESTURE (POINT / BRUSH / SHAPES)
@@ -698,14 +705,21 @@ export function useCanvasManipulation(options: UseCanvasManipulationOptions) {
                             let shape: fabric.Object;
                             if (tool === 'DRAW_RECT') {
                                 shape = new fabric.Rect({ ...baseOptions, width: 0, height: 0 });
-                            } else {
+                            } else if (tool === 'DRAW_CIRCLE') {
                                 shape = new fabric.Ellipse({ ...baseOptions, rx: 0, ry: 0 } as any);
+                            } else {
+                                shape = new fabric.Line([startPt.x, startPt.y, startPt.x, startPt.y], {
+                                    stroke: brushColorRef.current,
+                                    strokeWidth: brushSizeRef.current,
+                                    selectable: true,
+                                    hasControls: true,
+                                });
                             }
 
                             const shapeAny = shape as any;
                             shapeAny.id = 'shape_' + Date.now();
                             shapeAny.layerType = 'shape';
-                            shapeAny.name = `${tool === 'DRAW_RECT' ? 'Rectángulo' : 'Círculo'} ${nameSuffix}`;
+                            shapeAny.name = `${tool === 'DRAW_RECT' ? 'Rectángulo' : tool === 'DRAW_CIRCLE' ? 'Círculo' : 'Línea'} ${nameSuffix}`;
 
                             canvas.add(shape);
                             activeDrawingShapeRef.current = { shape, startPt };
@@ -731,6 +745,8 @@ export function useCanvasManipulation(options: UseCanvasManipulationOptions) {
                                     left: startPt.x - dist,
                                     top: startPt.y - dist,
                                 });
+                            } else if (tool === 'DRAW_LINE') {
+                                (shape as fabric.Line).set({ x2: pos.x, y2: pos.y });
                             }
                             canvas.requestRenderAll();
                         }
@@ -860,14 +876,58 @@ export function useCanvasManipulation(options: UseCanvasManipulationOptions) {
                 wasPointingRef.current = isPointing;
                 wasPinchingRef.current = isPinching;
             } else {
+                if (activePathPreviewRef.current) {
+                    canvas.remove(activePathPreviewRef.current);
+                    activePathPreviewRef.current = null;
+                }
+                if (wasPointingRef.current && currentStrokePointsRef.current.length > 1) {
+                    const pathData = pointsToSvgPath(currentStrokePointsRef.current);
+                    const strokeWidth = isHighlightModeRef.current ? Math.max(brushSizeRef.current + 8, 12) : brushSizeRef.current;
+                    const isLaser = (currentToolRef.current as string) === 'SELECT_LASER';
+                    const strokeColor = isLaser ? '#FF0055' : isHighlightModeRef.current ? toRgba(brushColorRef.current, 0.4) : brushColorRef.current;
+
+                    const finalPath = new fabric.Path(pathData, {
+                        fill: '',
+                        stroke: strokeColor,
+                        strokeWidth: strokeWidth,
+                        strokeLineCap: 'round',
+                        strokeLineJoin: 'round',
+                        selectable: !isLaser,
+                        hasControls: !isLaser,
+                    });
+
+                    const pathAny = finalPath as any;
+                    pathAny.id = 'stroke_' + Date.now();
+                    pathAny.layerType = 'drawing';
+                    pathAny.name = isLaser ? 'Rastro Láser' : `Trazo Libre ${canvas.getObjects().length + 1}`;
+
+                    pushSnapshot(isLaser ? 'Puntero Láser' : 'Trazo Libre');
+                    canvas.add(finalPath);
+                    commitHead();
+
+                    if (isLaser) {
+                        setTimeout(() => {
+                            canvas.remove(finalPath);
+                            canvas.requestRenderAll();
+                        }, 1800);
+                    }
+                }
+                if (grabbedObjectRef.current) {
+                    commitHead();
+                    grabbedObjectRef.current = null;
+                    grabOffsetRef.current = null;
+                }
+                if (activeDrawingShapeRef.current) {
+                    activeDrawingShapeRef.current = null;
+                    commitHead();
+                }
                 smoothedPosRef.current = null;
                 wasPointingRef.current = false;
                 wasPinchingRef.current = false;
-                grabbedObjectRef.current = null;
-                grabOffsetRef.current = null;
                 eraserStartTimeRef.current = 0;
                 currentStrokePointsRef.current = [];
                 setPointerPos(null);
+                canvas.requestRenderAll();
             }
 
             animationFrameIdRef.current = requestAnimationFrame(loop);
