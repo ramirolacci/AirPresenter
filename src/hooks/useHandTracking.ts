@@ -1,8 +1,33 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Hands, HAND_CONNECTIONS } from '@mediapipe/hands';
-import { Camera } from '@mediapipe/camera_utils';
-import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
+import * as mpHands from '@mediapipe/hands';
+import * as mpCamera from '@mediapipe/camera_utils';
+import * as mpDrawing from '@mediapipe/drawing_utils';
 import { HandLandmarks, HandTrackingState } from '../types/hand';
+
+// Resuelve constructores tanto en window global como en módulos importados (evita Rollup CJS constructor errors)
+const getHandsConstructor = (): any => {
+    return (window as any).Hands || (mpHands as any).Hands || (mpHands as any).default?.Hands || (mpHands as any).default;
+};
+
+const getCameraConstructor = (): any => {
+    return (window as any).Camera || (mpCamera as any).Camera || (mpCamera as any).default?.Camera || (mpCamera as any).default;
+};
+
+const getDrawConnectors = (): any => {
+    return (window as any).drawConnectors || (mpDrawing as any).drawConnectors || (mpDrawing as any).default?.drawConnectors;
+};
+
+const getDrawLandmarks = (): any => {
+    return (window as any).drawLandmarks || (mpDrawing as any).drawLandmarks || (mpDrawing as any).default?.drawLandmarks;
+};
+
+const getHandConnections = (): any => {
+    return (window as any).HAND_CONNECTIONS || (mpHands as any).HAND_CONNECTIONS || (mpHands as any).default?.HAND_CONNECTIONS || [
+        [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
+        [5, 9], [9, 10], [10, 11], [11, 12], [9, 13], [13, 14], [14, 15], [15, 16],
+        [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]
+    ];
+};
 
 interface UseHandTrackingOptions {
     videoRef: React.RefObject<HTMLVideoElement>;
@@ -38,8 +63,8 @@ export function useHandTracking(options: UseHandTrackingOptions) {
         error: null,
     });
 
-    const handsRef = useRef<Hands | null>(null);
-    const cameraRef = useRef<Camera | null>(null);
+    const handsRef = useRef<any>(null);
+    const cameraRef = useRef<any>(null);
     const animationFrameRef = useRef<number | null>(null);
     const isTrackingRef = useRef(false);
 
@@ -49,9 +74,12 @@ export function useHandTracking(options: UseHandTrackingOptions) {
             setState(prev => ({ ...prev, isLoading: true }));
 
             try {
-                const hands = new Hands({
-                    locateFile: (file) => {
-                        // En extensión de Chrome o Web App local, cargar assets locales offline
+                const HandsClass = getHandsConstructor();
+                if (!HandsClass) {
+                    throw new Error('MediaPipe Hands no está disponible');
+                }
+                const hands = new HandsClass({
+                    locateFile: (file: string) => {
                         return `/mediapipe/${file}`;
                     },
                 });
@@ -63,7 +91,7 @@ export function useHandTracking(options: UseHandTrackingOptions) {
                     minTrackingConfidence: minTrackingConfidence,
                 });
 
-                hands.onResults((results) => {
+                hands.onResults((results: any) => {
                     if (!canvasRef.current || !videoRef.current) return;
 
                     // Dibujar landmarks en el canvas
@@ -123,7 +151,7 @@ export function useHandTracking(options: UseHandTrackingOptions) {
 
                             // Convertir landmarks a nuestro formato
                             const handLandmarks: HandLandmarks = {
-                                landmarks: landmarks.map((landmark) => ({
+                                landmarks: landmarks.map((landmark: any) => ({
                                     x: landmark.x,
                                     y: landmark.y,
                                     z: landmark.z || 0,
@@ -134,16 +162,22 @@ export function useHandTracking(options: UseHandTrackingOptions) {
                             detectedHands.push(handLandmarks);
 
                             // Dibujar conexiones y landmarks en el canvas espejado
-                            const handConnections = HAND_CONNECTIONS;
-                            drawConnectors(ctx, landmarks, handConnections, {
-                                color: '#00F0FF',
-                                lineWidth: 2,
-                            });
-                            drawLandmarks(ctx, landmarks, {
-                                color: '#FF0055',
-                                lineWidth: 1,
-                                radius: 3,
-                            });
+                            const handConnections = getHandConnections();
+                            const drawConnectors = getDrawConnectors();
+                            const drawLandmarks = getDrawLandmarks();
+                            if (drawConnectors) {
+                                drawConnectors(ctx, landmarks, handConnections, {
+                                    color: '#00F0FF',
+                                    lineWidth: 2,
+                                });
+                            }
+                            if (drawLandmarks) {
+                                drawLandmarks(ctx, landmarks, {
+                                    color: '#FF0055',
+                                    lineWidth: 1,
+                                    radius: 3,
+                                });
+                            }
                         }
                     }
 
@@ -218,7 +252,12 @@ export function useHandTracking(options: UseHandTrackingOptions) {
                 canvasRef.current.height = videoHeight;
             }
 
-            const camera = new Camera(videoRef.current, {
+            const CameraClass = getCameraConstructor();
+            if (!CameraClass) {
+                throw new Error('MediaPipe Camera no está disponible');
+            }
+
+            const camera = new CameraClass(videoRef.current, {
                 onFrame: async () => {
                     if (handsRef.current && videoRef.current) {
                         await handsRef.current.send({

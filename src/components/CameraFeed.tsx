@@ -53,12 +53,19 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
             )}
 
             {state.error && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 p-6 text-center gap-3 backdrop-blur-md">
+                    <span className="text-3xl">📷</span>
+                    <h3 className="text-base font-bold text-white">Acceso a la cámara necesario</h3>
+                    <p className="text-xs text-white/70 max-w-sm">
+                        {state.error.includes('Permission') || state.error.includes('NotAllowedError')
+                            ? 'Permite el acceso a la cámara en los permisos de Chrome para comenzar a presentar.'
+                            : state.error}
+                    </p>
                     <button
                         onClick={restartCamera}
-                        className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur"
+                        className="mt-2 rounded-full border border-cyan-400/40 bg-cyan-500/20 px-5 py-2 text-xs font-semibold text-cyan-200 backdrop-blur hover:bg-cyan-500/30 transition hover:scale-105"
                     >
-                        Retry
+                        🔄 Reintentar Conexión
                     </button>
                 </div>
             )}
