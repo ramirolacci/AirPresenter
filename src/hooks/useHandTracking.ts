@@ -51,7 +51,8 @@ export function useHandTracking(options: UseHandTrackingOptions) {
             try {
                 const hands = new Hands({
                     locateFile: (file) => {
-                        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
+                        // En extensión de Chrome o Web App local, cargar assets locales offline
+                        return `/mediapipe/${file}`;
                     },
                 });
 

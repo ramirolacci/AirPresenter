@@ -1,7 +1,8 @@
 {
-    "name": "gesture-photo-editor",
+    "name": "airpresenter",
+    "description": "Live presentation whiteboard & gesture AR canvas for videocalls, streaming and recording",
     "private": true,
-    "version": "0.1.0",
+    "version": "1.0.0",
     "type": "module",
     "scripts": {
         "dev": "vite",
