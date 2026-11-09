@@ -7,9 +7,9 @@
 **Pizarra aumentada en vivo sobre la webcam controlada por gestos manuales en el aire para videollamadas (Google Meet, Zoom, Teams), streaming (OBS) y grabaciones (Loom).**
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-brightgreen.svg?style=for-the-badge&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
-[![pnpm](https://img.shields.io/badge/pnpm-fast-orange.svg?style=for-the-badge&logo=pnpm&logoColor=white)](https://pnpm.io/)
-[![React 18](https://img.shields.io/badge/React-18-blue.svg?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.2-3178C6.svg?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-%234a4a4a.svg?style=for-the-badge&logo=pnpm&logoColor=f69220)](https://pnpm.io/)
+[![React 18](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MediaPipe](https://img.shields.io/badge/MediaPipe-Hands_Offline-FFA800.svg?style=for-the-badge&logo=google&logoColor=white)](https://developers.google.com/mediapipe)
 [![Fabric.js](https://img.shields.io/badge/Fabric.js-Vector_Canvas-E34F26.svg?style=for-the-badge)](https://fabricjs.com/)
 
