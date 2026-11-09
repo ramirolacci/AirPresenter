@@ -7,6 +7,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AirPresenter — Live Gesture AR Canvas</title>
     <!-- MediaPipe Global Solutions (100% Offline & Chrome Extension Compatible) -->
+    <script>
+        // Filtrar logs de inicialización C++ de MediaPipe (I0000, W0000) para que Chrome no los categorice como errores en chrome://extensions
+        (function() {
+            const isInfoLog = (msg) => typeof msg === 'string' && (msg.startsWith('I0000') || msg.startsWith('W0000') || msg.includes('gl_context'));
+            const origErr = console.error;
+            const origWarn = console.warn;
+            console.error = function(...args) {
+                if (isInfoLog(args[0])) { console.info(...args); return; }
+                origErr.apply(console, args);
+            };
+            console.warn = function(...args) {
+                if (isInfoLog(args[0])) { console.info(...args); return; }
+                origWarn.apply(console, args);
+            };
+        })();
+    </script>
     <script src="/mediapipe/camera_utils.js"></script>
     <script src="/mediapipe/drawing_utils.js"></script>
     <script src="/mediapipe/hands.js"></script>

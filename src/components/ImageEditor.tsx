@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { EditorAction, HandLandmarks, RecognizedGesture } from '../types/hand';
 import { useCanvasManipulation } from '../hooks/useCanvasManipulation';
-import { QuickMenu } from './QuickMenu';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 
 interface ImageEditorProps {
@@ -74,7 +73,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
     const canvasWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const canvasHeight = typeof window !== 'undefined' ? window.innerHeight : 720;
 
-    const { toastMessage, quickMenuVisible, quickActions } = useUndoRedo({
+    const { toastMessage } = useUndoRedo({
         hands,
         gestures,
         isPaused: isGesturePaused,
@@ -338,7 +337,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                     </button>
                 )}
 
-                {quickMenuVisible && <QuickMenu visible={quickMenuVisible} actions={quickActions} />}
+
 
                 {toastMessage && (
                     <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center">
