@@ -68,6 +68,31 @@ export function useHandTracking(options: UseHandTrackingOptions) {
     const animationFrameRef = useRef<number | null>(null);
     const isTrackingRef = useRef(false);
 
+    const startCameraLoop = useCallback(() => {
+        if (!videoRef.current || cameraRef.current) return;
+        const CameraClass = getCameraConstructor();
+        if (!CameraClass) return;
+
+        const camera = new CameraClass(videoRef.current, {
+            onFrame: async () => {
+                if (handsRef.current && videoRef.current) {
+                    try {
+                        await handsRef.current.send({
+                            image: videoRef.current,
+                        });
+                    } catch {
+                        // Ignorar caídas momentáneas de frames
+                    }
+                }
+            },
+            width: 1280,
+            height: 720,
+        });
+
+        camera.start();
+        cameraRef.current = camera;
+    }, [videoRef]);
+
     // Inicializar MediaPipe Hands
     useEffect(() => {
         const initializeHands = async () => {
@@ -200,6 +225,9 @@ export function useHandTracking(options: UseHandTrackingOptions) {
                 });
 
                 handsRef.current = hands;
+                if (videoRef.current && videoRef.current.srcObject) {
+                    startCameraLoop();
+                }
             } catch (error) {
                 setState(prev => ({
                     ...prev,
@@ -216,11 +244,11 @@ export function useHandTracking(options: UseHandTrackingOptions) {
                 handsRef.current.close();
             }
         };
-    }, [maxHands, minDetectionConfidence, minTrackingConfidence, onHandsDetected, canvasRef, videoRef]);
+    }, [maxHands, minDetectionConfidence, minTrackingConfidence, onHandsDetected, canvasRef, videoRef, startCameraLoop]);
 
     // Iniciar cámara
     const startCamera = useCallback(async () => {
-        if (!videoRef.current || !handsRef.current) return;
+        if (!videoRef.current) return;
 
         try {
             setState(prev => ({ ...prev, isLoading: true }));
@@ -252,25 +280,9 @@ export function useHandTracking(options: UseHandTrackingOptions) {
                 canvasRef.current.height = videoHeight;
             }
 
-            const CameraClass = getCameraConstructor();
-            if (!CameraClass) {
-                throw new Error('MediaPipe Camera no está disponible');
+            if (handsRef.current) {
+                startCameraLoop();
             }
-
-            const camera = new CameraClass(videoRef.current, {
-                onFrame: async () => {
-                    if (handsRef.current && videoRef.current) {
-                        await handsRef.current.send({
-                            image: videoRef.current,
-                        });
-                    }
-                },
-                width: 1280,
-                height: 720,
-            });
-
-            camera.start();
-            cameraRef.current = camera;
 
             setState(prev => ({
                 ...prev,
@@ -285,7 +297,7 @@ export function useHandTracking(options: UseHandTrackingOptions) {
                 error: `Error iniciando cámara: ${error}`,
             }));
         }
-    }, [videoRef, canvasRef]);
+    }, [videoRef, canvasRef, startCameraLoop]);
 
     // Detener cámara
     const stopCamera = useCallback(() => {
